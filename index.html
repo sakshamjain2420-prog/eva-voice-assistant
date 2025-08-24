@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Eva Voice Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0ff">
+  <link rel="manifest" href="manifest.json">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #0ff;
+      text-align: center;
+      padding: 50px;
+      min-height: 100vh;
+    }
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 0.5em;
+    }
+    #status, #question, #answer {
+      font-size: 1.2em;
+      margin: 1em 0;
+    }
+    p { margin: 1em auto; max-width: 600px; }
+    .note { color: #888; font-size: 0.95em; }
+    button {
+      margin-top: 2em; padding: 0.8em 2em; font-size: 1em;
+      background: #0ff; color: #111; border: none; border-radius: 8px; cursor: pointer;
+    }
+    button:active { background: #09c; }
+  </style>
+</head>
+<body>
+  <h1>🎤 Say "Eva" to Wake</h1>
+  <p class="note">Tap anywhere or click the button below to start listening.<br>
+  Ask Eva anything after saying "Eva".</p>
+  <button id="start">Start Listening</button>
+  <p id="status">Waiting...</p>
+  <p id="question"></p>
+  <p id="answer"></p>
+
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("service-worker.js");
+}
+const statusEl = document.getElementById("status");
+const questionEl = document.getElementById("question");
+const answerEl = document.getElementById("answer");
+const startBtn = document.getElementById("start");
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition;
+let wakeMode = true;
+
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+  recognition.continuous = true;
+
+  recognition.onstart = () => {
+    statusEl.textContent = "🎤 Listening... Say 'Eva'";
+  };
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[event.results.length-1][0].transcript.toLowerCase().trim();
+    console.log("Heard:", transcript);
+
+    if (wakeMode && transcript.includes("eva")) {
+      wakeMode = false;
+      statusEl.textContent = "✅ Activated! Ask me something...";
+      return;
+    }
+
+    if (!wakeMode && event.results[event.results.length-1].isFinal) {
+      const q = transcript;
+      questionEl.textContent = "❓ " + q;
+      askWiki(q);
+      wakeMode = true;
+      statusEl.textContent = "Say 'Eva' to wake again...";
+    }
+  };
+
+  recognition.onerror = (e) => {
+    statusEl.textContent = "Error: " + e.error;
+  };
+
+  recognition.onend = () => recognition.start(); // auto-restart
+} else {
+  statusEl.textContent = "Voice recognition not supported in this browser.";
+  startBtn.disabled = true;
+}
+
+// Start after user interacts (browser requirement)
+function startListening() {
+  if (recognition) {
+    recognition.start();
+    statusEl.textContent = "🎤 Listening started... Say 'Eva'";
+    startBtn.style.display = "none";
+  }
+}
+startBtn.addEventListener("click", startListening);
+document.body.addEventListener("click", function(e){
+  if (e.target !== startBtn) startListening();
+}, { once: true });
+
+// Wikipedia search
+async function askWiki(text) {
+  answerEl.textContent = "Searching Wikipedia...";
+  try {
+    const res = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(text));
+    const data = await res.json();
+    if (data.extract) {
+      answerEl.textContent = data.extract;
+      speak(data.extract);
+    } else {
+      answerEl.textContent = "No info found.";
+    }
+  } catch (e) {
+    answerEl.textContent = "Fetch error.";
+  }
+}
+
+function speak(text) {
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  speechSynthesis.speak(u);
+}
+</script>
+</body>
+</html>
