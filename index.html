@@ -52,12 +52,18 @@ const startBtn = document.getElementById("start");
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition;
 let wakeMode = true;
+let answering = false;
 
 function resetToWake() {
   wakeMode = true;
+  answering = false;
   statusEl.textContent = "Say 'Eva' to wake again...";
   questionEl.textContent = "";
   answerEl.textContent = "";
+  if (recognition) {
+    recognition.stop();
+    setTimeout(() => recognition.start(), 400); // Restart recognition after a brief pause
+  }
 }
 
 if (SpeechRecognition) {
@@ -70,9 +76,10 @@ if (SpeechRecognition) {
   };
 
   recognition.onresult = (event) => {
-    const transcript = event.results[event.results.length-1][0].transcript.toLowerCase().trim();
-    console.log("Heard:", transcript);
+    if (answering) return; // Prevent double answering
 
+    const transcript = event.results[event.results.length-1][0].transcript.toLowerCase().trim();
+    // Wake mode: listen for "eva"
     if (wakeMode && transcript.includes("eva")) {
       wakeMode = false;
       statusEl.textContent = "✅ Activated! Ask me something...";
@@ -80,13 +87,12 @@ if (SpeechRecognition) {
       answerEl.textContent = "";
       return;
     }
-
+    // Question mode: listen for question
     if (!wakeMode && event.results[event.results.length-1].isFinal) {
+      answering = true;
       const q = transcript;
       questionEl.textContent = "❓ " + q;
       askWiki(q);
-      // After answering, reset to wake mode and clear question/answer
-      setTimeout(resetToWake, 3000);
     }
   };
 
@@ -95,7 +101,12 @@ if (SpeechRecognition) {
     setTimeout(resetToWake, 2000);
   };
 
-  recognition.onend = () => recognition.start(); // auto-restart
+  recognition.onend = () => {
+    // Only restart if not answering (prevents double speaking)
+    if (!answering) {
+      recognition.start();
+    }
+  };
 } else {
   statusEl.textContent = "Voice recognition not supported in this browser.";
   startBtn.disabled = true;
@@ -120,21 +131,28 @@ async function askWiki(text) {
     const data = await res.json();
     if (data.extract) {
       answerEl.textContent = data.extract;
-      speak(data.extract);
+      speak(data.extract, resetToWake);
     } else {
       answerEl.textContent = "No info found.";
+      setTimeout(resetToWake, 2000);
     }
   } catch (e) {
     answerEl.textContent = "Fetch error.";
+    setTimeout(resetToWake, 2000);
   }
 }
 
-function speak(text) {
+// Call reset after speaking
+function speak(text, callback) {
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "en-US";
+  u.onend = () => {
+    if (typeof callback === "function") callback();
+  };
   speechSynthesis.speak(u);
 }
 </script>
 </body>
 
 </html>
+
