@@ -57,6 +57,10 @@ function resetToWake() {
   statusEl.textContent = "Say 'Eva' to wake again...";
   questionEl.textContent = "";
   answerEl.textContent = "";
+  if (recognition) {
+    recognition.stop();
+    setTimeout(() => recognition.start(), 500);
+  }
 }
 
 if (SpeechRecognition) {
@@ -82,12 +86,7 @@ if (SpeechRecognition) {
       answering = true;
       const q = transcript;
       questionEl.textContent = "❓ " + q;
-      answerEl.textContent = "You asked: " + q; // Just echo for now
-      setTimeout(() => {
-        resetToWake();
-        recognition.stop();
-        setTimeout(() => recognition.start(), 500);
-      }, 2500);
+      askWiki(q);
     }
   };
 
@@ -115,9 +114,37 @@ startBtn.addEventListener("click", startListening);
 document.body.addEventListener("click", function(e){
   if (e.target !== startBtn) startListening();
 }, { once: true });
+
+async function askWiki(text) {
+  answerEl.textContent = "Searching Wikipedia...";
+  try {
+    const res = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(text));
+    const data = await res.json();
+    if (data.extract) {
+      answerEl.textContent = data.extract;
+      speak(data.extract, resetToWake);
+    } else {
+      answerEl.textContent = "No info found.";
+      setTimeout(resetToWake, 2000);
+    }
+  } catch (e) {
+    answerEl.textContent = "Fetch error.";
+    setTimeout(resetToWake, 2000);
+  }
+}
+
+function speak(text, callback) {
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "en-US";
+  u.onend = () => {
+    if (typeof callback === "function") callback();
+  };
+  speechSynthesis.speak(u);
+}
 </script>
 </body>
 
 </html>
+
 
 
