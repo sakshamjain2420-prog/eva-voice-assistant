@@ -53,6 +53,13 @@ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecogni
 let recognition;
 let wakeMode = true;
 
+function resetToWake() {
+  wakeMode = true;
+  statusEl.textContent = "Say 'Eva' to wake again...";
+  questionEl.textContent = "";
+  answerEl.textContent = "";
+}
+
 if (SpeechRecognition) {
   recognition = new SpeechRecognition();
   recognition.lang = "en-US";
@@ -69,6 +76,8 @@ if (SpeechRecognition) {
     if (wakeMode && transcript.includes("eva")) {
       wakeMode = false;
       statusEl.textContent = "✅ Activated! Ask me something...";
+      questionEl.textContent = "";
+      answerEl.textContent = "";
       return;
     }
 
@@ -76,13 +85,14 @@ if (SpeechRecognition) {
       const q = transcript;
       questionEl.textContent = "❓ " + q;
       askWiki(q);
-      wakeMode = true;
-      statusEl.textContent = "Say 'Eva' to wake again...";
+      // After answering, reset to wake mode and clear question/answer
+      setTimeout(resetToWake, 3000);
     }
   };
 
   recognition.onerror = (e) => {
     statusEl.textContent = "Error: " + e.error;
+    setTimeout(resetToWake, 2000);
   };
 
   recognition.onend = () => recognition.start(); // auto-restart
@@ -91,7 +101,6 @@ if (SpeechRecognition) {
   startBtn.disabled = true;
 }
 
-// Start after user interacts (browser requirement)
 function startListening() {
   if (recognition) {
     recognition.start();
@@ -104,7 +113,6 @@ document.body.addEventListener("click", function(e){
   if (e.target !== startBtn) startListening();
 }, { once: true });
 
-// Wikipedia search
 async function askWiki(text) {
   answerEl.textContent = "Searching Wikipedia...";
   try {
@@ -128,4 +136,5 @@ function speak(text) {
 }
 </script>
 </body>
+
 </html>
