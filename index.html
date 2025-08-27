@@ -122,7 +122,10 @@ async function askWiki(text) {
     const data = await res.json();
     if (data.extract) {
       answerEl.textContent = data.extract;
-      speak(data.extract, resetToWake);
+      // Reset immediately after speaking
+      speak(data.extract, () => {
+        setTimeout(resetToWake, 1000); // Reset after 1 second of speaking end
+      });
     } else {
       answerEl.textContent = "No info found.";
       setTimeout(resetToWake, 2000);
@@ -143,9 +146,4 @@ function speak(text, callback) {
 }
 </script>
 </body>
-
 </html>
-
-
-
-
