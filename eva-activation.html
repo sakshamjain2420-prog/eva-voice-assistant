@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Eva Voice Activation - Science Project</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    #status { margin-top: 20px; font-size: 1.2em; }
+    #log { margin-top: 20px; color: #555; max-height: 200px; overflow-y: auto; }
+    button { padding: 10px 20px; font-size: 1em; }
+  </style>
+</head>
+<body>
+  <h1>Eva Voice Activation Science Project</h1>
+  <button id="start">Start Listening</button>
+  <div id="status">Click "Start Listening" and say "eva".</div>
+  <div id="log"></div>
+
+  <script>
+    // List of possible activation phrases
+    const activationPhrases = [
+      "eva", "ava", "ever", "e var", "a va", "e wa", "a eva", "evar", "ayva"
+    ];
+    const threshold = 0.3; // Lowered for more flexibility
+    let listening = false;
+
+    // Check for browser support
+    window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!window.SpeechRecognition) {
+      document.getElementById('status').textContent = "Sorry, your browser doesn't support speech recognition (try Chrome).";
+      document.getElementById('start').disabled = true;
+    } else {
+      const recognition = new window.SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      document.getElementById('start').onclick = function() {
+        if (!listening) {
+          recognition.start();
+          listening = true;
+          document.getElementById('status').textContent = "Listening... Say 'eva'.";
+        } else {
+          recognition.stop();
+          listening = false;
+          document.getElementById('status').textContent = "Stopped listening.";
+        }
+      };
+
+      recognition.onresult = function(event) {
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          const transcript = event.results[i][0].transcript.trim().toLowerCase();
+          const confidence = event.results[i][0].confidence;
+          document.getElementById('log').innerHTML += `<div>Heard: <b>${transcript}</b> (Conf: ${confidence})</div>`;
+
+          if (activationPhrases.some(phrase => transcript.includes(phrase)) && confidence >= threshold) {
+            activateEva();
+          }
+        }
+      };
+
+      recognition.onerror = function(event) {
+        document.getElementById('status').textContent = `Error: ${event.error}`;
+        listening = false;
+        if (event.error === "not-allowed" || event.error === "denied") {
+          document.getElementById('status').textContent += " - Please allow microphone access.";
+        }
+      };
+
+      recognition.onend = function() {
+        listening = false;
+        document.getElementById('status').textContent = "Stopped listening.";
+      };
+
+      function activateEva() {
+        document.getElementById('status').textContent = "Eva activated! 🎉";
+        setTimeout(() => {
+          document.getElementById('status').textContent = "Listening... Say 'eva'.";
+        }, 2000);
+      }
+    }
+  </script>
+</body>
+</html>
