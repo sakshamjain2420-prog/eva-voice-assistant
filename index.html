@@ -30,7 +30,7 @@
     const recognition = new window.SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = false;
-    recognition.lang = 'en-IN';
+    recognition.lang = 'en-US';
 
     document.getElementById('start').onclick = function() {
       if (!listening) {
@@ -70,4 +70,5 @@
   </script>
 </body>
 </html>
+
 
